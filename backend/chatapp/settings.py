@@ -30,7 +30,11 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = int(os.getenv('ENVIRNOMENT', 0))
 
 # Allowed hosts - use environment variable in production
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',') if os.getenv('ALLOWED_HOSTS') else ["*"]
+ALLOWED_HOSTS = [
+    "chatapp-backend-eip7.onrender.com",
+    "localhost",
+    "127.0.0.1",
+]
 
 
 # Application definition
