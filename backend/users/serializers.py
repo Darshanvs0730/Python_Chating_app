@@ -25,13 +25,45 @@ class GetUserSerializer(serializers.ModelSerializer):
 
 class ChatMessageSerializer(serializers.ModelSerializer):
     userName = serializers.SerializerMethodField()
+    file_url = serializers.SerializerMethodField()
+    sender_name = serializers.SerializerMethodField()
+    sender_id = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatMessage
-        exclude = ['id', 'sender']
+        exclude = ['id']
 
-    def get_userName(self, Obj):
-        return Obj.receiver.first_name + ' ' + Obj.receiver.last_name
+    def get_userName(self, obj):
+        if obj.receiver:
+            return obj.receiver.first_name + ' ' + obj.receiver.last_name
+        return 'Unknown'
+    
+    def get_sender_id(self, obj):
+        if obj.sender:
+            return obj.sender.id
+        return None
+    
+    def get_file_url(self, obj):
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                # Build absolute URI for file
+                file_url = obj.file.url
+                # Ensure it starts with /media/
+                if not file_url.startswith('/'):
+                    file_url = '/' + file_url
+                return request.build_absolute_uri(file_url)
+            # Fallback to relative URL
+            file_url = obj.file.url
+            if not file_url.startswith('/'):
+                file_url = '/' + file_url
+            return file_url
+        return None
+    
+    def get_sender_name(self, obj):
+        if obj.sender:
+            return obj.sender.first_name + ' ' + obj.sender.last_name
+        return 'Unknown'
 
 
 class ChatRoomList(serializers.ModelSerializer):

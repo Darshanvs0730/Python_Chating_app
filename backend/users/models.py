@@ -42,10 +42,10 @@ class ChatRoom(models.Model):
     roomId = models.CharField(max_length=100, default=uuid.uuid4, unique=True)
     type = models.CharField(max_length=10, default='DM')
     member_1 = models.ForeignKey(
-        User, on_delete=models.DO_NOTHING, related_name='member_1'
+        User, on_delete=models.CASCADE, related_name='member_1'
     )
     member_2 = models.ForeignKey(
-        User, on_delete=models.DO_NOTHING, related_name='member_2'
+        User, on_delete=models.CASCADE, related_name='member_2'
     )
     timestamp = models.DateTimeField(auto_now_add=True)
 
@@ -54,6 +54,16 @@ class ChatRoom(models.Model):
 
 
 class ChatMessage(models.Model):
+    MESSAGE_TYPE_TEXT = 'text'
+    MESSAGE_TYPE_FILE = 'file'
+    MESSAGE_TYPE_IMAGE = 'image'
+    
+    MESSAGE_TYPES = (
+        (MESSAGE_TYPE_TEXT, 'Text'),
+        (MESSAGE_TYPE_FILE, 'File'),
+        (MESSAGE_TYPE_IMAGE, 'Image'),
+    )
+    
     room_ID = models.ForeignKey(ChatRoom, on_delete=models.SET_NULL, null=True)
     sender = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name='sender'
@@ -61,10 +71,16 @@ class ChatMessage(models.Model):
     receiver = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name='receiver'
     )
-    message = models.CharField(max_length=255)
+    message = models.CharField(max_length=500)
+    message_type = models.CharField(max_length=10, choices=MESSAGE_TYPES, default=MESSAGE_TYPE_TEXT)
+    file = models.FileField(upload_to='chat_files/', null=True, blank=True)
+    file_name = models.CharField(max_length=255, null=True, blank=True)
+    file_size = models.BigIntegerField(null=True, blank=True)
+    file_type = models.CharField(max_length=100, null=True, blank=True)
+    is_read = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"From: {self.sender.first_name}, " \
-               f"To: {self.receiver.first_name}, " \
-               f"Message: {self.message}"
+        return f"From: {self.sender.first_name if self.sender else 'Unknown'}, " \
+               f"To: {self.receiver.first_name if self.receiver else 'Unknown'}, " \
+               f"Message: {self.message[:50]}"

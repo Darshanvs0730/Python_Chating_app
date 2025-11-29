@@ -121,7 +121,12 @@ class MessagesView(ListAPIView):
     def get_queryset(self):
         roomId = self.kwargs['roomId']
         return ChatMessage.objects.filter(
-            room_ID=roomId)
+            room_ID=roomId).order_by('timestamp')  # Ascending order - oldest first, newest last
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 
 class GetRoom(APIView):

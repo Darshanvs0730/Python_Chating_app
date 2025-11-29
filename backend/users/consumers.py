@@ -156,10 +156,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         return {
             'action': 'message',
             'sender': sender_data,
+            'sender_id': sender_id,  # Include sender_id for frontend to identify message owner
             'receiver': receiver_id,
+            'receiver_id': receiver_id,
             'roomId': roomId,
             'message': message,
             'userName': userObj_2.first_name + " " + userObj_2.last_name,
+            'sender_name': userObj_1.first_name + " " + userObj_1.last_name,  # Include sender name
             'timestamp': str(chatMessageObj.timestamp)
         }
 
@@ -208,12 +211,61 @@ class ChatConsumer(AsyncWebsocketConsumer):
             message = text_data_json['message']
             receiver_id = text_data_json['receiver']
 
+            # Determine sender based on receiver
+            # If receiver is member_2, sender is member_1, and vice versa
+            if str(receiver_id) == str(self.member_2):
+                sender_id = self.member_1
+            else:
+                sender_id = self.member_2
+
             chat_message = await database_sync_to_async(self.saveMessage)(
-                message, self.member_1, receiver_id, self.room_name
+                message, sender_id, receiver_id, self.room_name
             )
 
         elif action == 'typing':
-            chat_message = text_data_json
+            # Include sender information in typing message
+            sender_id = text_data_json.get('sender_id')
+            if not sender_id:
+                # Determine sender from WebSocket connection
+                if str(text_data_json.get('receiver')) == str(self.member_2):
+                    sender_id = self.member_1
+                else:
+                    sender_id = self.member_2
+            
+            # Get sender user object
+            sender_user = await database_sync_to_async(User.objects.get)(id=sender_id)
+            
+            chat_message = {
+                'action': 'typing',
+                'sender_id': sender_id,
+                'sender': {
+                    'id': sender_user.id,
+                    'first_name': sender_user.first_name,
+                    'last_name': sender_user.last_name
+                },
+                'receiver': text_data_json.get('receiver')
+            }
+        elif action == 'typing_stopped':
+            # Handle typing stopped
+            sender_id = text_data_json.get('sender_id')
+            if not sender_id:
+                if str(text_data_json.get('receiver')) == str(self.member_2):
+                    sender_id = self.member_1
+                else:
+                    sender_id = self.member_2
+            
+            sender_user = await database_sync_to_async(User.objects.get)(id=sender_id)
+            
+            chat_message = {
+                'action': 'typing_stopped',
+                'sender_id': sender_id,
+                'sender': {
+                    'id': sender_user.id,
+                    'first_name': sender_user.first_name,
+                    'last_name': sender_user.last_name
+                },
+                'receiver': text_data_json.get('receiver')
+            }
 
         await self.channel_layer.group_send(
             self.room_name,
